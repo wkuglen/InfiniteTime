@@ -1,0 +1,23 @@
+{
+    "appKeys": {},
+    "capabilities": [
+        ""
+    ],
+    "companyName": "wkuglen",
+    "enableMultiJS": true,
+    "longName": "Infinite Time",
+    "projectType": "native",
+    "resources": {
+        "media": []
+    },
+    "sdkVersion": "3",
+    "shortName": "Infinite Time",
+    "targetPlatforms": [
+        "basalt"
+    ],
+    "uuid": "468b9588-c50e-447f-9433-96339aeb94b3",
+    "versionLabel": "1.0",
+    "watchapp": {
+        "watchface": true
+    }
+}
