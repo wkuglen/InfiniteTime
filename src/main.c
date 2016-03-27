@@ -1,6 +1,6 @@
 #include <pebble.h>
 static Window *s_main_window;
-static TextLayer *s_time_layer;
+static TextLayer *s_time_layer, *s_date_layer;
 
 static Layer *s_canvas_layer;
 
@@ -25,6 +25,14 @@ static void update_time() {
 
   // Display this time on the TextLayer
   text_layer_set_text(s_time_layer, s_buffer);
+  
+  // Copy date into buffer from tm structure
+  static char date_buffer[16];
+  strftime(date_buffer, sizeof(date_buffer), "%a %d %b", tick_time);
+
+  // Show the date
+  text_layer_set_text(s_date_layer, date_buffer);
+
 }
 
 static void tick_handler(struct tm *tick_time, TimeUnits units_changed) {
@@ -43,29 +51,31 @@ static void update_proc(Layer *layer, GContext *ctx) {
   time_t temp = time(NULL);
   struct tm *tick_time = localtime(&temp);
   
-  int timeFraction = (60*(tick_time->tm_hour) + (tick_time->tm_min));//5;//3600;
-  printf("%i %i", timeFraction/2, timeFraction/2 + 180);
-  if (timeFraction < 720) {
-    
+  int hour = (tick_time->tm_hour);
+  float timeFraction = hour + ((tick_time->tm_min)/60);
+  if (hour < 12) {
     //Morning
-      timeFraction = 180 + (timeFraction/2);
-    
+    if (timeFraction <= 6) {
+      angle_start = DEG_TO_TRIGANGLE(90 - (180 - (30*timeFraction)));
+      angle_end = DEG_TO_TRIGANGLE(90 - (162 - (30 * timeFraction)));
+    } else {
+      angle_start = DEG_TO_TRIGANGLE(90 - (540 - (30*timeFraction)));
+      angle_end = DEG_TO_TRIGANGLE(90 - (522 - (30*timeFraction)));
+    }
     rect_bounds = GRect(s_right_top.x, s_right_top.y, 2*s_radius, 2*s_radius);
-    angle_start = DEG_TO_TRIGANGLE(timeFraction);
-    angle_end = DEG_TO_TRIGANGLE(timeFraction + 18);
   } else {
     //Afternoon
-    timeFraction = timeFraction/2;
-    timeFraction -= 360;
     rect_bounds = GRect(s_left_top.x, s_left_top.y, 2*s_radius, 2*s_radius);
-    angle_start = DEG_TO_TRIGANGLE(timeFraction);
-    angle_end = DEG_TO_TRIGANGLE(timeFraction + 18);
+    angle_start = DEG_TO_TRIGANGLE(90 - ((timeFraction-12) * 30));
+    angle_end = DEG_TO_TRIGANGLE(90 - ((timeFraction-12) * 30 - 18));
   }
+  printf("%i %i", (int)angle_start, (int)angle_end);
   
-  //graphics_context_set_fill_color(ctx, GColorDarkGray);
-  // White clockface
-  //graphics_context_set_fill_color(ctx, GColorWhite);
-  //graphics_fill_circle(ctx, s_center, s_radius);
+  /*  // Cyan Circles
+  graphics_context_set_fill_color(ctx, GColorWhite);
+  graphics_fill_circle(ctx, s_left_center, s_radius);
+  graphics_fill_circle(ctx, s_right_center, s_radius);  
+  */
   //DRAW CIRCLES
   graphics_context_set_stroke_color(ctx, GColorBlack);
   graphics_context_set_stroke_width(ctx, 4);
@@ -77,8 +87,8 @@ static void update_proc(Layer *layer, GContext *ctx) {
   // Set the fill color
   graphics_context_set_fill_color(ctx, GColorOrange);
   //graphics_context_set_stroke_color(ctx, GColorWhite);
-  graphics_fill_radial(ctx, rect_bounds, GOvalScaleModeFitCircle, 10, angle_start, 
-                                                                    angle_end);
+  graphics_fill_radial(ctx, rect_bounds, GOvalScaleModeFitCircle, 15, angle_start, angle_end);
+  
 
   
 }
@@ -102,22 +112,34 @@ static void main_window_load(Window *window) {
   layer_add_child(window_layer, s_canvas_layer);
   // Create the TextLayer with specific bounds
   s_time_layer = text_layer_create(
-      GRect(0, s_center.y + (s_center.y/4), bounds.size.w, 50));
+      GRect(0, bounds.size.h - 80, bounds.size.w, 50));
 
   // Improve the layout to be more like a watchface
   text_layer_set_background_color(s_time_layer, GColorClear);
   text_layer_set_text_color(s_time_layer, GColorBlack);
-  text_layer_set_font(s_time_layer, fonts_get_system_font(FONT_KEY_LECO_38_BOLD_NUMBERS));
+  text_layer_set_font(s_time_layer, fonts_get_system_font(FONT_KEY_LECO_42_NUMBERS));
   text_layer_set_text_alignment(s_time_layer, GTextAlignmentCenter);
 
   // Add it as a child layer to the Window's root layer
   layer_add_child(window_layer, text_layer_get_layer(s_time_layer));
+  
+  // Create date TextLayer
+  s_date_layer = text_layer_create(GRect(0, bounds.size.h - 30, 144, 30));
+  text_layer_set_text_color(s_date_layer, GColorBlack);
+  text_layer_set_background_color(s_date_layer, GColorClear);
+  text_layer_set_font(s_date_layer, fonts_get_system_font(FONT_KEY_GOTHIC_18_BOLD));
+  text_layer_set_text_alignment(s_date_layer, GTextAlignmentCenter);
+
+  // Add to Window
+  layer_add_child(window_get_root_layer(window), text_layer_get_layer(s_date_layer));
+
 }
 
 static void main_window_unload(Window *window) {
   // Destroy TextLayer
   text_layer_destroy(s_time_layer);
- 
+  text_layer_destroy(s_date_layer);
+  
   // Destroy Drawing
   layer_destroy(s_canvas_layer);
 }
@@ -146,6 +168,7 @@ static void init() {
 
 static void deinit() {
   window_destroy(s_main_window);
+  
 }
 
 
